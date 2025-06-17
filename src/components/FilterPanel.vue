@@ -56,7 +56,11 @@
         <div v-if="showAdvanced" class="advanced-filters">
             <div class="filter-group">
                 <label>关键词搜索</label>
-                <input v-model="filters.keyword" type="text" placeholder="搜索备注内容" @input="applyFilters">
+                <div class="search-group">
+                    <input v-model="filters.keyword" type="text" placeholder="搜索备注内容" @input="handleKeywordInput"
+                        @blur="applyFilters">
+                    <button @click="applyFilters" class="search-btn">搜索</button>
+                </div>
             </div>
 
             <div class="filter-group">
@@ -98,9 +102,22 @@ const filters = ref({
 });
 
 const showAdvanced = ref(false);
+let keywordTimeout = null;
 
 // 定义emit事件
 const emit = defineEmits(['filtered']);
+
+// 处理关键词输入
+const handleKeywordInput = () => {
+    // 清除之前的定时器
+    if (keywordTimeout) {
+        clearTimeout(keywordTimeout);
+    }
+    // 设置新的定时器，500ms 后执行筛选
+    keywordTimeout = setTimeout(() => {
+        applyFilters();
+    }, 500);
+};
 
 // 应用筛选
 const applyFilters = () => {
@@ -191,11 +208,6 @@ watch(() => accountStore.records, () => {
     applyFilters();
 }, { immediate: true });
 
-// 接收筛选结果并更新计数
-const updateFilteredCount = (filtered) => {
-    filteredCount.value = filtered.length;
-};
-
 // 初始化时应用筛选
 applyFilters();
 
@@ -251,6 +263,32 @@ defineExpose({
     font-size: 14px;
 }
 
+.search-group {
+    display: flex;
+    gap: 8px;
+}
+
+.search-group input {
+    flex: 1;
+}
+
+.search-btn {
+    background: #42b883;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.search-btn:hover {
+    background: #359268;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .filter-actions {
     display: flex;
     gap: 10px;
@@ -263,26 +301,27 @@ defineExpose({
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: all 0.3s;
     font-size: 14px;
-    transition: background 0.3s;
 }
 
 .reset-btn {
-    background: #6c757d;
-    color: white;
+    background: #f8f9fa;
+    color: #666;
+    border: 1px solid #ddd;
 }
 
 .reset-btn:hover {
-    background: #5a6268;
+    background: #e9ecef;
 }
 
 .toggle-btn {
-    background: #17a2b8;
+    background: #42b883;
     color: white;
 }
 
 .toggle-btn:hover {
-    background: #138496;
+    background: #359268;
 }
 
 .filter-summary {
@@ -305,6 +344,11 @@ defineExpose({
 
     .filter-actions {
         flex-direction: column;
+    }
+
+    .reset-btn,
+    .toggle-btn {
+        width: 100%;
     }
 }
 </style>
