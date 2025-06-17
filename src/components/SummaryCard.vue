@@ -118,7 +118,7 @@ const isFiltered = computed(() => {
 }
 
 .card.balance {
-    background: linear-gradient(135deg, #3742fa, #2f3542);
+    background: linear-gradient(135deg, #7c80d0, #4d74c9);
     color: white;
 }
 

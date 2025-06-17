@@ -11,19 +11,6 @@
                     <option value="支出">支出</option>
                 </select>
             </div>
-
-            <!-- 日期范围筛选 -->
-            <div class="filter-group">
-                <label>开始日期</label>
-                <input v-model="filters.startDate" type="date" @change="applyFilters">
-            </div>
-
-            <!-- 金额范围筛选 -->
-            <div class="filter-group">
-                <label>最小金额</label>
-                <input v-model.number="filters.minAmount" type="number" step="0.01" placeholder="0"
-                    @input="applyFilters">
-            </div>
             <!-- 分类筛选 -->
             <div class="filter-group">
                 <label>分类</label>
@@ -32,11 +19,24 @@
                     <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
             </div>
-
+            <!-- 日期范围筛选 -->
+            <div class="filter-group">
+                <label>开始日期</label>
+                <input v-model="filters.startDate" type="date" @change="applyFilters">
+            </div>
             <div class="filter-group">
                 <label>结束日期</label>
                 <input v-model="filters.endDate" type="date" @change="applyFilters">
             </div>
+            <!-- 金额范围筛选 -->
+            <div class="filter-group">
+                <label>最小金额</label>
+                <input v-model.number="filters.minAmount" type="number" step="0.01" placeholder="0"
+                    @input="applyFilters">
+            </div>
+
+
+
 
             <div class="filter-group">
                 <label>最大金额</label>
