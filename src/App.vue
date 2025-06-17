@@ -4,18 +4,17 @@
   </header>
   <main>
     <AddRecordForm @record-added="handleRecordAdded" />
-    <FilterPanel @filtered="handleFiltered" ref="filterPanel" />
     <div class="flex-container">
       <div class="left-panel">
+        <SummaryCard :filtered-records="filteredRecords" />
         <EnhancedChart :filtered-records="filteredRecords" />
       </div>
       <div class="right-panel">
-        <SummaryCard :filtered-records="filteredRecords" />
+        <FilterPanel @filtered="handleFiltered" ref="filterPanel" />
         <RecordList :filtered-records="filteredRecords" @refresh-filter="refreshFilter" />
         <ExportData :filtered-records="filteredRecords" />
       </div>
     </div>
-
   </main>
 </template>
 
@@ -72,29 +71,45 @@ main {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  background-color: #f8f9fa;
+}
+
+/* 移除数字输入框的微调按钮 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 25px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
   color: white;
   text-align: center;
-  padding: 20px 0;
+  padding: 25px 0;
   margin-bottom: 30px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
 }
 
 header h1 {
   margin: 0;
   font-size: 2.5rem;
   font-weight: 300;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 </style>
 
@@ -106,26 +121,50 @@ header h1 {
   max-width: 1400px;
   margin: 20px auto 0;
   padding: 0;
+  min-height: 600px;
 }
 
 .left-panel {
-  flex: 3;
+  flex: 1;
   min-width: 0;
-  /* 防止flex项目溢出 */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.left-panel>* {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .right-panel {
-  flex: 2;
+  flex: 1;
   min-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  /* 移除gap，让组件自己控制间距 */
+  gap: 20px;
 }
 
-/* 确保右侧组件之间有适当的间距 */
-.right-panel>*:not(:last-child) {
-  margin-bottom: 0;
+.right-panel>* {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 调整记录列表样式 */
+.right-panel> :nth-child(2) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.right-panel> :nth-child(2)>div {
+  flex: 1;
+  overflow: auto;
 }
 
 @media (max-width: 1200px) {
@@ -141,7 +180,7 @@ header h1 {
   }
 
   .right-panel {
-    gap: 0;
+    gap: 20px;
   }
 }
 
@@ -157,6 +196,11 @@ header h1 {
   .flex-container {
     gap: 15px;
     margin-top: 15px;
+  }
+
+  .left-panel,
+  .right-panel>* {
+    padding: 15px;
   }
 }
 </style>

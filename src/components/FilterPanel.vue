@@ -12,6 +12,18 @@
                 </select>
             </div>
 
+            <!-- 日期范围筛选 -->
+            <div class="filter-group">
+                <label>开始日期</label>
+                <input v-model="filters.startDate" type="date" @change="applyFilters">
+            </div>
+
+            <!-- 金额范围筛选 -->
+            <div class="filter-group">
+                <label>最小金额</label>
+                <input v-model.number="filters.minAmount" type="number" step="0.01" placeholder="0"
+                    @input="applyFilters">
+            </div>
             <!-- 分类筛选 -->
             <div class="filter-group">
                 <label>分类</label>
@@ -21,22 +33,9 @@
                 </select>
             </div>
 
-            <!-- 日期范围筛选 -->
-            <div class="filter-group">
-                <label>开始日期</label>
-                <input v-model="filters.startDate" type="date" @change="applyFilters">
-            </div>
-
             <div class="filter-group">
                 <label>结束日期</label>
                 <input v-model="filters.endDate" type="date" @change="applyFilters">
-            </div>
-
-            <!-- 金额范围筛选 -->
-            <div class="filter-group">
-                <label>最小金额</label>
-                <input v-model.number="filters.minAmount" type="number" step="0.01" placeholder="0"
-                    @input="applyFilters">
             </div>
 
             <div class="filter-group">
@@ -83,6 +82,9 @@ import { useAccountStore } from '@/stores/accountStore';
 
 const accountStore = useAccountStore();
 
+// 分类选项
+const categories = ['餐饮', '交通', '购物', '娱乐', '工资', '医疗', '教育', '住房', '通讯', '服装', '日用品', '奖金', '投资', '兼职', '礼金', '退款', '其他'];
+
 // 筛选条件
 const filters = ref({
     type: '',
@@ -96,12 +98,6 @@ const filters = ref({
 });
 
 const showAdvanced = ref(false);
-
-// 获取所有分类
-const categories = computed(() => {
-    const allCategories = [...new Set(accountStore.records.map(r => r.category))];
-    return allCategories.sort();
-});
 
 // 定义emit事件
 const emit = defineEmits(['filtered']);
