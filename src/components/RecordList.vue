@@ -3,21 +3,23 @@
         <div class="list-header">
             <h3>记账记录</h3>
             <div class="list-actions">
-                <button v-if="!isBatchMode" @click="enterBatchMode" class="batch-btn">
+                <button v-if="!isBatchMode" @click="isBatchMode = true" class="batch-btn">
                     批量删除
                 </button>
                 <template v-else>
-                    <div class="batch-actions">
-                        <button @click="selectAll" class="select-all-btn">
-                            {{ isAllSelected ? '取消全选' : '全选' }}
-                        </button>
-                        <button @click="deleteSelected" class="delete-btn" :disabled="!hasSelected">
-                            删除选中 ({{ selectedCount }})
-                        </button>
-                        <button @click="exitBatchMode" class="cancel-btn">
-                            取消
-                        </button>
-                    </div>
+                    <button @click="toggleCurrentPageSelect" class="select-btn"
+                        :class="{ 'selected': isCurrentPageAllSelected }">
+                        {{ isCurrentPageAllSelected ? '取消本页全选' : '本页全选' }}
+                    </button>
+                    <button @click="toggleAllSelect" class="select-btn" :class="{ 'selected': isAllSelected }">
+                        {{ isAllSelected ? '取消全选' : '全选' }}
+                    </button>
+                    <button @click="deleteSelectedRecords" class="delete-btn" :disabled="selectedRecords.length === 0">
+                        删除选中({{ selectedRecords.length }})
+                    </button>
+                    <button @click="cancelBatchMode" class="cancel-btn">
+                        取消
+                    </button>
                 </template>
             </div>
         </div>
@@ -153,16 +155,111 @@ const paginatedRecords = computed(() => {
 
     // 如果记录数不足5条，添加空行占位
     while (records.length < pageSize) {
-        records.push({ id: `empty-${records.length}`, isEmpty: true });
+        records.push({
+            id: `empty-${records.length}`,
+            isEmpty: true,
+            type: '',
+            category: '',
+            amount: 0,
+            date: '',
+            note: ''
+        });
     }
 
     return records;
 });
 
+// 计算当前页的所有记录ID（排除空行）
+const currentPageRecordIds = computed(() => {
+    return paginatedRecords.value
+        .filter(record => !record.isEmpty)
+        .map(record => record.id);
+});
+
+// 计算是否当前页全选
+const isCurrentPageAllSelected = computed(() => {
+    const validRecords = currentPageRecordIds.value;
+    return validRecords.length > 0 &&
+        validRecords.every(id => selectedRecords.value.includes(id));
+});
+
+// 计算是否全部记录已选中
+const isAllSelected = computed(() => {
+    const validRecords = props.filteredRecords;
+    return validRecords.length > 0 &&
+        validRecords.every(record => selectedRecords.value.includes(record.id));
+});
+
+// 切换选择状态
+const toggleSelect = (recordId) => {
+    if (recordId.startsWith('empty-')) return; // 忽略空行的点击
+
+    const index = selectedRecords.value.indexOf(recordId);
+    if (index === -1) {
+        selectedRecords.value.push(recordId);
+    } else {
+        selectedRecords.value.splice(index, 1);
+    }
+};
+
+// 切换当前页全选
+const toggleCurrentPageSelect = () => {
+    const validRecords = currentPageRecordIds.value;
+    if (isCurrentPageAllSelected.value) {
+        // 取消当前页所有选中
+        selectedRecords.value = selectedRecords.value.filter(
+            id => !validRecords.includes(id)
+        );
+    } else {
+        // 选中当前页所有记录
+        validRecords.forEach(id => {
+            if (!selectedRecords.value.includes(id)) {
+                selectedRecords.value.push(id);
+            }
+        });
+    }
+};
+
+// 切换全选
+const toggleAllSelect = () => {
+    const validRecords = props.filteredRecords;
+    if (isAllSelected.value) {
+        // 取消所有选中
+        selectedRecords.value = [];
+    } else {
+        // 选中所有记录
+        selectedRecords.value = validRecords.map(record => record.id);
+    }
+};
+
+// 取消批量模式
+const cancelBatchMode = () => {
+    isBatchMode.value = false;
+    selectedRecords.value = [];
+};
+
+// 删除选中的记录
+const deleteSelectedRecords = () => {
+    if (selectedRecords.value.length === 0) {
+        alert('请选择要删除的记录');
+        return;
+    }
+
+    if (confirm(`确定要删除选中的 ${selectedRecords.value.length} 条记录吗？`)) {
+        selectedRecords.value.forEach(id => {
+            accountStore.deleteRecord(id);
+        });
+        selectedRecords.value = [];
+        isBatchMode.value = false;
+    }
+};
+
 // 监听筛选结果变化，重置分页
 watch(() => props.filteredRecords, () => {
     currentPage.value = 1;
-});
+    // 不要在这里清空选中状态
+    // selectedRecords.value = [];
+}, { deep: true });
 
 // 编辑记录
 const editRecord = (record) => {
@@ -184,68 +281,6 @@ const deleteRecord = (id) => {
         emit('refresh-filter');
     }
 };
-
-// 进入批量删除模式
-const enterBatchMode = () => {
-    isBatchMode.value = true;
-    selectedRecords.value = [];
-};
-
-// 退出批量删除模式
-const exitBatchMode = () => {
-    isBatchMode.value = false;
-    selectedRecords.value = [];
-};
-
-// 切换选中状态
-const toggleSelect = (id) => {
-    const index = selectedRecords.value.indexOf(id);
-    if (index === -1) {
-        selectedRecords.value.push(id);
-    } else {
-        selectedRecords.value.splice(index, 1);
-    }
-};
-
-// 全选/取消全选
-const isAllSelected = computed(() => {
-    return paginatedRecords.value.length > 0 &&
-        selectedRecords.value.length === paginatedRecords.value.length;
-});
-
-const selectAll = () => {
-    if (isAllSelected.value) {
-        // 取消全选时，清空所有选中项
-        selectedRecords.value = [];
-    } else {
-        // 全选时，添加当前页所有记录的ID
-        selectedRecords.value = paginatedRecords.value.map(record => record.id);
-    }
-};
-
-// 是否有选中的记录
-const hasSelected = computed(() => selectedRecords.value.length > 0);
-
-// 获取选中的记录数量
-const selectedCount = computed(() => selectedRecords.value.length);
-
-// 删除选中的记录
-const deleteSelected = () => {
-    if (selectedRecords.value.length === 0) return;
-
-    if (confirm(`确定要删除选中的 ${selectedCount.value} 条记录吗？`)) {
-        selectedRecords.value.forEach(id => {
-            accountStore.deleteRecord(id);
-        });
-        emit('refresh-filter');
-        exitBatchMode();
-    }
-};
-
-// 监听分页变化，清除选中状态
-watch(() => currentPage.value, () => {
-    selectedRecords.value = [];
-});
 </script>
 
 <style scoped>
@@ -268,7 +303,7 @@ watch(() => currentPage.value, () => {
 }
 
 .batch-btn,
-.select-all-btn,
+.select-btn,
 .delete-btn,
 .cancel-btn {
     padding: 6px 12px;
@@ -289,13 +324,25 @@ watch(() => currentPage.value, () => {
     background: #e9ecef;
 }
 
-.select-all-btn {
-    background: #42b883;
-    color: white;
+.select-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
 }
 
-.select-all-btn:hover {
-    background: #359268;
+.select-btn:hover {
+    background: #f5f5f5;
+}
+
+.select-btn.selected {
+    background: #e6f7ff;
+    border-color: #1890ff;
+    color: #1890ff;
 }
 
 .delete-btn {
@@ -561,16 +608,6 @@ watch(() => currentPage.value, () => {
     padding: 20px;
 }
 
-.batch-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.delete-btn {
-    min-width: 100px;
-}
-
 @media (max-width: 768px) {
     .list-header {
         flex-direction: column;
@@ -583,7 +620,7 @@ watch(() => currentPage.value, () => {
     }
 
     .batch-btn,
-    .select-all-btn,
+    .select-btn,
     .delete-btn,
     .cancel-btn {
         flex: 1;
