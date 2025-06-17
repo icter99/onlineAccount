@@ -26,16 +26,18 @@ export const useAccountStore = defineStore('account', () => {
     } // 深度监听对象/数组内部变化
   );
 
-  // 添加记录的方法（示例）
+  // 添加记录的方法
   const addRecord = (record) => {
-    records.value.push({
-      id: Date.now(), // 生成唯一 ID（时间戳）
+    // 确保每条记录都有唯一的 ID
+    const newRecord = {
+      id: Date.now() + Math.random().toString(36).substr(2, 9), // 使用时间戳加随机字符串生成唯一ID
       type: record.type || '支出',
       amount: Number(record.amount) || 0,
       category: record.category || '其他',
       date: record.date || new Date().toISOString().split('T')[0], // 默认当天
       note: record.note || '',
-    });
+    };
+    records.value.push(newRecord);
   };
 
   // 更新记录的方法

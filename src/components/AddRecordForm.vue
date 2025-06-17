@@ -164,7 +164,11 @@ const handleFileImport = async (event) => {
                 dateStr = new Date().toISOString().split('T')[0];
             }
 
+            // 为每条记录生成唯一ID
+            const uniqueId = Date.now() + Math.random().toString(36).substr(2, 9);
+
             return {
+                id: uniqueId,
                 type: row.type || '支出',
                 amount: Number(row.amount) || 0,
                 category: row.category || '其他',

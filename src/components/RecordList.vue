@@ -7,15 +7,17 @@
                     批量删除
                 </button>
                 <template v-else>
-                    <button @click="selectAll" class="select-all-btn">
-                        {{ isAllSelected ? '取消全选' : '全选' }}
-                    </button>
-                    <button @click="deleteSelected" class="delete-btn" :disabled="!hasSelected">
-                        删除选中
-                    </button>
-                    <button @click="exitBatchMode" class="cancel-btn">
-                        取消
-                    </button>
+                    <div class="batch-actions">
+                        <button @click="selectAll" class="select-all-btn">
+                            {{ isAllSelected ? '取消全选' : '全选' }}
+                        </button>
+                        <button @click="deleteSelected" class="delete-btn" :disabled="!hasSelected">
+                            删除选中 ({{ selectedCount }})
+                        </button>
+                        <button @click="exitBatchMode" class="cancel-btn">
+                            取消
+                        </button>
+                    </div>
                 </template>
             </div>
         </div>
@@ -25,29 +27,36 @@
                 暂无记录
             </div>
             <div v-else class="records">
-                <div v-for="record in paginatedRecords" :key="record.id" class="record-item"
-                    :class="{ 'selected': isBatchMode && selectedRecords.includes(record.id) }">
-                    <div class="record-content" @click="isBatchMode && toggleSelect(record.id)">
-                        <div class="record-type" :class="record.type">
-                            {{ record.type }}
-                        </div>
-                        <div class="record-info">
-                            <div class="record-main">
-                                <span class="record-category">{{ record.category }}</span>
-                                <span class="record-amount" :class="record.type">
-                                    {{ record.type === '收入' ? '+' : '-' }}¥{{ record.amount.toFixed(2) }}
-                                </span>
+                <div v-for="record in paginatedRecords" :key="record.id" class="record-item" :class="{
+                    'selected': isBatchMode && selectedRecords.includes(record.id),
+                    'empty-row': record.isEmpty
+                }">
+                    <template v-if="!record.isEmpty">
+                        <div class="record-content" @click="isBatchMode && toggleSelect(record.id)">
+                            <div class="record-type" :class="record.type">
+                                {{ record.type }}
                             </div>
-                            <div class="record-sub">
-                                <span class="record-date">{{ record.date }}</span>
-                                <span class="record-note">{{ record.note }}</span>
+                            <div class="record-info">
+                                <div class="record-main">
+                                    <span class="record-category">{{ record.category }}</span>
+                                    <span class="record-amount" :class="record.type">
+                                        {{ record.type === '收入' ? '+' : '-' }}¥{{ record.amount.toFixed(2) }}
+                                    </span>
+                                </div>
+                                <div class="record-sub">
+                                    <span class="record-date">{{ record.date }}</span>
+                                    <span class="record-note">{{ record.note }}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="record-actions" v-if="!isBatchMode">
-                        <button @click="editRecord(record)" class="edit-btn">编辑</button>
-                        <button @click="deleteRecord(record.id)" class="delete-btn">删除</button>
-                    </div>
+                        <div class="record-actions" v-if="!isBatchMode">
+                            <button @click="editRecord(record)" class="edit-btn">编辑</button>
+                            <button @click="deleteRecord(record.id)" class="delete-btn">删除</button>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="empty-content"></div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -120,7 +129,7 @@ const accountStore = useAccountStore();
 
 // 分页相关
 const currentPage = ref(1);
-const pageSize = 10;
+const pageSize = 5; // 固定每页显示5条记录
 
 // 编辑相关
 const showEditDialog = ref(false);
@@ -140,7 +149,14 @@ const totalPages = computed(() => Math.ceil(props.filteredRecords.length / pageS
 const paginatedRecords = computed(() => {
     const start = (currentPage.value - 1) * pageSize;
     const end = start + pageSize;
-    return props.filteredRecords.slice(start, end);
+    const records = props.filteredRecords.slice(start, end);
+
+    // 如果记录数不足5条，添加空行占位
+    while (records.length < pageSize) {
+        records.push({ id: `empty-${records.length}`, isEmpty: true });
+    }
+
+    return records;
 });
 
 // 监听筛选结果变化，重置分页
@@ -199,8 +215,10 @@ const isAllSelected = computed(() => {
 
 const selectAll = () => {
     if (isAllSelected.value) {
+        // 取消全选时，清空所有选中项
         selectedRecords.value = [];
     } else {
+        // 全选时，添加当前页所有记录的ID
         selectedRecords.value = paginatedRecords.value.map(record => record.id);
     }
 };
@@ -208,11 +226,14 @@ const selectAll = () => {
 // 是否有选中的记录
 const hasSelected = computed(() => selectedRecords.value.length > 0);
 
+// 获取选中的记录数量
+const selectedCount = computed(() => selectedRecords.value.length);
+
 // 删除选中的记录
 const deleteSelected = () => {
     if (selectedRecords.value.length === 0) return;
 
-    if (confirm(`确定要删除选中的 ${selectedRecords.value.length} 条记录吗？`)) {
+    if (confirm(`确定要删除选中的 ${selectedCount.value} 条记录吗？`)) {
         selectedRecords.value.forEach(id => {
             accountStore.deleteRecord(id);
         });
@@ -220,6 +241,11 @@ const deleteSelected = () => {
         exitBatchMode();
     }
 };
+
+// 监听分页变化，清除选中状态
+watch(() => currentPage.value, () => {
+    selectedRecords.value = [];
+});
 </script>
 
 <style scoped>
@@ -300,23 +326,40 @@ const deleteSelected = () => {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+    height: calc(5 * (50px + 8px));
+    /* 调整行高和间距 */
 }
 
 .records {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    /* 减小行间距 */
 }
 
 .record-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
+    padding: 8px 12px;
+    /* 减小上下内边距 */
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: all 0.3s;
+    height: 50px;
+    /* 减小行高 */
+}
+
+.empty-row {
+    background: #f8f9fa;
+    box-shadow: none;
+    border: 1px dashed #ddd;
+}
+
+.empty-content {
+    width: 100%;
+    height: 100%;
 }
 
 .record-item.selected {
@@ -333,9 +376,13 @@ const deleteSelected = () => {
 
 .record-type {
     padding: 4px 8px;
+    /* 减小类型标签的内边距 */
     border-radius: 4px;
     font-size: 12px;
+    /* 稍微减小字体 */
     font-weight: 500;
+    min-width: 45px;
+    text-align: center;
 }
 
 .record-type.收入 {
@@ -355,16 +402,22 @@ const deleteSelected = () => {
 .record-main {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 4px;
+    align-items: center;
+    margin-bottom: 2px;
+    /* 减小间距 */
 }
 
 .record-category {
+    font-size: 14px;
+    /* 稍微减小字体 */
     font-weight: 500;
     color: #333;
 }
 
 .record-amount {
-    font-weight: 500;
+    font-size: 14px;
+    /* 稍微减小字体 */
+    font-weight: 600;
 }
 
 .record-amount.收入 {
@@ -378,22 +431,27 @@ const deleteSelected = () => {
 .record-sub {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 12px;
+    /* 稍微减小字体 */
     color: #666;
 }
 
 .record-actions {
     display: flex;
     gap: 8px;
+    /* 减小按钮间距 */
 }
 
 .edit-btn,
 .delete-btn {
     padding: 4px 8px;
+    /* 减小按钮内边距 */
+    font-size: 12px;
+    /* 减小按钮字体 */
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
     transition: all 0.3s;
 }
 
@@ -503,6 +561,16 @@ const deleteSelected = () => {
     padding: 20px;
 }
 
+.batch-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.delete-btn {
+    min-width: 100px;
+}
+
 @media (max-width: 768px) {
     .list-header {
         flex-direction: column;
@@ -529,6 +597,16 @@ const deleteSelected = () => {
     .record-actions {
         width: 100%;
         justify-content: flex-end;
+    }
+
+    .batch-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .batch-actions button {
+        flex: 1;
+        min-width: 0;
     }
 }
 </style>
