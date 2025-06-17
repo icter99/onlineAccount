@@ -121,56 +121,69 @@ const triggerFileInput = () => {
 };
 
 // 处理文件导入
-const handleFileImport = (event) => {
+const handleFileImport = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-            // 验证数据格式
-            const validRecords = jsonData.filter(record => {
-                return record['类型'] &&
-                    record['金额'] &&
-                    record['分类'] &&
-                    record['日期'] &&
-                    (record['类型'] === '收入' || record['类型'] === '支出');
-            });
+        // 验证数据格式
+        const requiredFields = ['type', 'amount', 'category', 'date', 'note'];
+        const isValid = jsonData.every(row => {
+            return requiredFields.every(field => field in row);
+        });
 
-            if (validRecords.length === 0) {
-                alert('导入的数据格式不正确，请使用正确的模板文件！');
-                return;
+        if (!isValid) {
+            alert('导入的文件格式不正确，请使用正确的模板文件。');
+            return;
+        }
+
+        // 处理导入的数据
+        const processedData = jsonData.map(row => {
+            // 处理日期格式
+            let dateStr;
+            if (typeof row.date === 'number') {
+                // Excel 日期是从 1900-01-01 开始的天数
+                const excelDate = new Date((row.date - 25569) * 86400 * 1000);
+                dateStr = excelDate.toISOString().split('T')[0];
+            } else if (typeof row.date === 'string') {
+                // 尝试解析日期字符串
+                const date = new Date(row.date);
+                if (!isNaN(date.getTime())) {
+                    dateStr = date.toISOString().split('T')[0];
+                } else {
+                    // 如果解析失败，使用当前日期
+                    dateStr = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                // 如果日期无效，使用当前日期
+                dateStr = new Date().toISOString().split('T')[0];
             }
 
-            // 转换数据格式并导入
-            const records = validRecords.map(record => ({
-                type: record['类型'],
-                amount: Number(record['金额']),
-                category: record['分类'],
-                date: record['日期'],
-                note: record['备注'] || ''
-            }));
+            return {
+                type: row.type || '支出',
+                amount: Number(row.amount) || 0,
+                category: row.category || '其他',
+                date: dateStr,
+                note: row.note || ''
+            };
+        });
 
-            // 批量添加记录
-            records.forEach(record => {
-                if (record.amount > 0) {
-                    accountStore.addRecord(record);
-                }
-            });
+        // 添加记录
+        processedData.forEach(record => {
+            accountStore.addRecord(record);
+        });
 
-            alert(`成功导入 ${records.length} 条记录！`);
-            emit('record-added');
-        } catch (error) {
-            console.error('导入失败:', error);
-            alert('导入失败，请确保文件格式正确！');
-        }
-    };
-    reader.readAsArrayBuffer(file);
+        alert(`成功导入 ${processedData.length} 条记录`);
+        event.target.value = ''; // 清空文件输入
+    } catch (error) {
+        console.error('导入失败:', error);
+        alert('导入失败，请检查文件格式是否正确。');
+    }
 };
 
 // 下载模板
@@ -178,18 +191,18 @@ const downloadTemplate = () => {
     // 创建示例数据
     const templateData = [
         {
-            '类型': '支出',
-            '金额': 100.00,
-            '分类': '餐饮',
-            '日期': new Date().toISOString().split('T')[0],
-            '备注': '示例备注'
+            type: '支出',
+            amount: 100.00,
+            category: '餐饮',
+            date: new Date().toISOString().split('T')[0],
+            note: '午餐'
         },
         {
-            '类型': '收入',
-            '金额': 5000.00,
-            '分类': '工资',
-            '日期': new Date().toISOString().split('T')[0],
-            '备注': '示例备注'
+            type: '收入',
+            amount: 5000.00,
+            category: '工资',
+            date: new Date().toISOString().split('T')[0],
+            note: '月薪'
         }
     ];
 
@@ -199,21 +212,19 @@ const downloadTemplate = () => {
 
     // 设置列宽
     const colWidths = [
-        { wch: 10 }, // 类型
-        { wch: 12 }, // 金额
-        { wch: 12 }, // 分类
-        { wch: 12 }, // 日期
-        { wch: 20 }  // 备注
+        { wch: 10 }, // type
+        { wch: 15 }, // amount
+        { wch: 15 }, // category
+        { wch: 15 }, // date
+        { wch: 30 }  // note
     ];
     ws['!cols'] = colWidths;
 
     // 添加工作表到工作簿
-    XLSX.utils.book_append_sheet(wb, ws, '记账数据模板');
+    XLSX.utils.book_append_sheet(wb, ws, '记账模板');
 
-    // 导出文件
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/octet-stream' });
-    saveAs(blob, '记账数据导入模板.xlsx');
+    // 下载文件
+    XLSX.writeFile(wb, '记账模板.xlsx');
 };
 </script>
 

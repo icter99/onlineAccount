@@ -132,7 +132,9 @@ const expenseCategories = computed(() => {
 const monthlyData = computed(() => {
     const monthly = {};
     props.filteredRecords.forEach(r => {
-        const month = r.date.substring(0, 7); // YYYY-MM
+        // 确保日期是字符串格式
+        const dateStr = typeof r.date === 'string' ? r.date : new Date(r.date).toISOString().split('T')[0];
+        const month = dateStr.substring(0, 7); // YYYY-MM
         if (!monthly[month]) {
             monthly[month] = { income: 0, expense: 0 };
         }
