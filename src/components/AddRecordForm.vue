@@ -199,14 +199,14 @@ const downloadTemplate = () => {
             amount: 100.00,
             category: '餐饮',
             date: new Date().toISOString().split('T')[0],
-            note: '午餐'
+            note: '示例备注'
         },
         {
             type: '收入',
             amount: 5000.00,
             category: '工资',
             date: new Date().toISOString().split('T')[0],
-            note: '月薪'
+            note: '示例备注'
         }
     ];
 

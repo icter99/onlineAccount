@@ -20,9 +20,23 @@
         <div class="chart-content">
             <!-- 支出分类饼图 -->
             <div v-show="activeChart === 'pie'" class="chart-section">
-                <h3>支出分类占比</h3>
+                <div class="pie-controls">
+                    <h3>分类占比</h3>
+                    <div class="pie-type-switch">
+                        <button @click="pieType = 'expense'" :class="{ active: pieType === 'expense' }"
+                            class="switch-btn">
+                            支出分类
+                        </button>
+                        <button @click="pieType = 'income'" :class="{ active: pieType === 'income' }"
+                            class="switch-btn">
+                            收入分类
+                        </button>
+                    </div>
+                </div>
                 <canvas ref="pieCanvas" width="400" height="300"></canvas>
-                <div v-if="expenseCategories.length === 0" class="no-data">暂无支出数据</div>
+                <div v-if="currentPieData.length === 0" class="no-data">
+                    暂无{{ pieType === 'expense' ? '支出' : '收入' }}数据
+                </div>
             </div>
 
             <!-- 收支对比柱状图 -->
@@ -112,6 +126,9 @@ const chartTabs = [
     { key: 'summary', label: '详细统计' }
 ];
 
+// 添加饼图类型状态
+const pieType = ref('expense');
+
 // 判断是否处于筛选状态
 const isFiltered = computed(() => {
     return props.filteredRecords.length !== accountStore.records.length;
@@ -126,6 +143,22 @@ const expenseCategories = computed(() => {
             categories[r.category] = (categories[r.category] || 0) + r.amount;
         });
     return Object.entries(categories).map(([category, amount]) => ({ category, amount }));
+});
+
+// 添加收入分类数据计算属性
+const incomeCategories = computed(() => {
+    const categories = {};
+    props.filteredRecords
+        .filter(r => r.type === '收入')
+        .forEach(r => {
+            categories[r.category] = (categories[r.category] || 0) + r.amount;
+        });
+    return Object.entries(categories).map(([category, amount]) => ({ category, amount }));
+});
+
+// 当前饼图数据
+const currentPieData = computed(() => {
+    return pieType.value === 'expense' ? expenseCategories.value : incomeCategories.value;
 });
 
 // 月度数据（基于筛选后的数据）
@@ -177,39 +210,84 @@ const monthlyStats = computed(() => {
 
 // 初始化饼图
 const initPieChart = async () => {
-    if (!pieCanvas.value || expenseCategories.value.length === 0) return;
+    if (!pieCanvas.value || currentPieData.value.length === 0) return;
 
     if (pieChart) pieChart.destroy();
 
     await nextTick();
     const ctx = pieCanvas.value.getContext('2d');
 
+    // 支出饼图使用暖色调，体现消费特点
+    const expenseColors = [
+        '#FF6B6B', // 明亮的红色
+        '#FF9F43', // 温暖的橙色
+        '#FFD93D', // 明亮的黄色
+        '#6C5CE7', // 优雅的紫色
+        '#A29BFE', // 柔和的紫色
+        '#FF8B94', // 柔和的粉色
+        '#FFB8B8', // 浅粉色
+        '#FFD3B6', // 温暖的橙色
+        '#FFE5D4', // 浅橙色
+        '#FFA07A'  // 浅珊瑚色
+    ];
+
+    // 收入饼图使用冷色调，体现稳健特点
+    const incomeColors = [
+        '#2ECC71', // 翠绿色
+        '#27AE60', // 深绿色
+        '#3498DB', // 天蓝色
+        '#2980B9', // 深蓝色
+        '#1ABC9C', // 青绿色
+        '#16A085', // 深青绿色
+        '#4ECDC4', // 薄荷绿
+        '#45B7AF', // 深薄荷绿
+        '#7FDBFF', // 浅蓝色
+        '#39CCCC'  // 青色
+    ];
+
+    const colors = pieType.value === 'expense' ? expenseColors : incomeColors;
+
     pieChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: expenseCategories.value.map(item => item.category),
+            labels: currentPieData.value.map(item => item.category),
             datasets: [{
-                data: expenseCategories.value.map(item => item.amount),
-                backgroundColor: [
-                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
-                    '#9966FF', '#FF9F40', '#E7E9ED', '#71B37C',
-                    '#8E44AD', '#E67E22'
-                ],
-                hoverOffset: 4
+                data: currentPieData.value.map(item => item.amount),
+                backgroundColor: colors,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                hoverOffset: 8,
+                hoverBorderWidth: 3
             }]
         },
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'bottom' },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: (ctx) => {
-                            const total = expenseCategories.value.reduce((sum, item) => sum + item.amount, 0);
+                            const total = currentPieData.value.reduce((sum, item) => sum + item.amount, 0);
                             const percentage = ((ctx.raw / total) * 100).toFixed(1);
                             return `${ctx.label}: ¥${ctx.raw.toFixed(2)} (${percentage}%)`;
                         }
-                    }
+                    },
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    titleColor: '#333',
+                    bodyColor: '#666',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 6,
+                    displayColors: true,
+                    usePointStyle: true
                 }
             }
         }
@@ -350,6 +428,11 @@ watch(activeChart, async () => {
 
 // 监听筛选数据变化
 watch(() => props.filteredRecords, initCharts, { deep: true });
+
+// 监听饼图类型变化
+watch(pieType, () => {
+    initPieChart();
+});
 
 // 组件挂载
 onMounted(() => {
@@ -532,6 +615,37 @@ canvas {
 
 .balance.negative {
     color: #ff4757;
+}
+
+.pie-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pie-type-switch {
+    display: flex;
+    gap: 10px;
+}
+
+.switch-btn {
+    padding: 8px 16px;
+    border: 1px solid #007bff;
+    background: transparent;
+    color: #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.switch-btn:hover {
+    background: rgba(0, 123, 255, 0.1);
+}
+
+.switch-btn.active {
+    background: #007bff;
+    color: white;
 }
 
 @media (max-width: 768px) {
