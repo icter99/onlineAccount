@@ -1,7 +1,7 @@
 <template>
   <div class="header-section">
     <header>
-      <h1>在线记账本</h1>
+      <h1>嘿嘿记账本</h1>
     </header>
     <main>
       <AddRecordForm @record-added="handleRecordAdded" />
