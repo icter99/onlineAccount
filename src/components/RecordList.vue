@@ -131,7 +131,7 @@ const accountStore = useAccountStore();
 
 // 分页相关
 const currentPage = ref(1);
-const pageSize = 5; // 固定每页显示5条记录
+const pageSize = 7; // 固定每页显示7条记录
 
 // 编辑相关
 const showEditDialog = ref(false);
@@ -153,7 +153,7 @@ const paginatedRecords = computed(() => {
     const end = start + pageSize;
     const records = props.filteredRecords.slice(start, end);
 
-    // 如果记录数不足5条，添加空行占位
+    // 如果记录数不足7条，添加空行占位
     while (records.length < pageSize) {
         records.push({
             id: `empty-${records.length}`,

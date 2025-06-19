@@ -13,7 +13,7 @@ export const useAccountStore = defineStore('account', () => {
     return saved ? JSON.parse(saved) : [];
   };
 
-  // 定义响应式数据（结构与你设计的 JSON 格式一致）
+  // 定义响应式数据
   const records = ref(loadRecords());
 
   // 监听数据变化并同步到 LocalStorage
